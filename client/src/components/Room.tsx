@@ -10,6 +10,7 @@ const Room = (props: any) => {
     const socketRef = useRef<typeof Socket>();
     const peerRef = useRef<Array<any>>([]);
     let roomID = props.match.params.roomID;
+    console.log(roomID)
 
     useEffect(() => {
         socketRef.current = io.connect("http://localhost:8000");
@@ -21,7 +22,26 @@ const Room = (props: any) => {
         }).then(stream => {
             // @ts-ignore
             myVideo.current.srcObject = stream;
-
+            socketRef.current?.emit('join room', roomID);
+            socketRef.current?.on('all users', (users: any) => {
+                var peers: any[] = [];
+                users.forEach((user : any) => {
+                    const peer = createPeer(user, socketRef.current?.id ?? '', stream);
+                    peers.push({
+                        peerID: user,
+                        peer
+                    })
+                });
+                setPeers(peers);
+            });
+            socketRef.current?.on('user joined', (payload: any) => {
+                const peer = addPeer(payload.signal, payload.callerID, stream)
+                peerRef.current.push({
+                    peerID: payload.callerID,
+                    peer
+                });
+                setPeers([...peers, peer]); // ellipses is like a = [1, 2, 3], to add to the elements in another list (or extend)
+            })
             /**
              *  1. Join a new room. `join room`
              *  2. When you join you need to get all the peers that are in that room. `all users` 
@@ -31,11 +51,20 @@ const Room = (props: any) => {
              *      3.1 To create the peer object call the addPeer function
              */
 
+             //note: in typescript and javascript ? means return ubdefined if thing on left not defined, 
+             // ?? returns what's on the right. so undefined ?? "" returns ""
+
 
              /**
               * When the signal returns `receiving returned signal`
               * signal the peer with that id;
+              * send the signal to alert the other peers
               */
+             socketRef.current?.on('receiving returned signal', (payload: any) => {
+                 const peerEmitter = peerRef.current.find(p => p.peerID === payload.id);
+                 peerEmitter?.peer.signal(payload.signal);
+
+             });
              
         })
     }, []);
@@ -51,9 +80,23 @@ const Room = (props: any) => {
          *     stream,
          *   }
          */
+        const peer = new Peer(
+            {
+                initiator : true,
+                trickle: false,
+                stream,
+            }
+        );
+
+        peer.on('signal', signal => {
+            socketRef.current?.emit('sending signal', {userToSignal, callerID, signal});
+        });
+
+        return peer;
 
         /**
          * Than on signal you need to send the first signal
+         * 'sending signal' action
          * 
          */
     }
@@ -73,9 +116,29 @@ const Room = (props: any) => {
          * Than you send a returning signal
          * 
          */
+        const peer = new Peer(
+            {
+                initiator : false,
+                trickle: false,
+                stream,
+            }
+        );
+
+        peer.on('signal', signal => {
+            socketRef.current?.emit('returning signal', { signal, callerID });
+        });
+
+        peer.signal(incomingSignal);
+
+        return peer;
     }
 
-    return <VideoElement userVideo={myVideo}/>
+    return  <div>
+    <VideoElement userVideo={myVideo} />
+        {
+            peers && peers.forEach(peer => <Video {...{ peer }} />) //array destructuring
+        }
+    </div>
 };
 
 
@@ -83,7 +146,6 @@ const Video = (props: any) => {
     const ref = useRef();
 
     useEffect(() => {
-        console.log(props.peer)
         if (props.peer)
             props.peer.peer.on("stream", (stream: any) => {
                 // @ts-ignore

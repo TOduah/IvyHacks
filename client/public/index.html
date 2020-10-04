@@ -25,6 +25,27 @@
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
     <title>React App</title>
+    <!-- custom below -->
+    <style media="screen">
+      #custom-button {
+        padding: 10px;
+        color: #0a5780;
+        background-color: #a0d9f7;
+        border: 1px solid #000;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+
+      #custom-border:hover {
+        background-color: #a0e9f7;
+      }
+
+      #custom-text {
+        margin-left: 10px;
+        font-family: sans-serif;
+        color: #aaa;
+      }
+    </style>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
@@ -39,5 +60,65 @@
       To begin the development, run `npm start` or `yarn start`.
       To create a production bundle, use `npm run build` or `yarn build`.
     -->
+
+    <!-- custom below -->
+    <hr>
+    <input type="file" id="real-file" hidden="hidden"/>
+    <button type="button" id="custom-button">choose a file</button>
+    <span id="custom-text">no file chosen yet</span>
+    
+    <script type="text/javascript">
+      const realFileBtn = document.getElementById("real-file");
+      const customBtn = document.getElementById("custom-button");
+      const customTxt = document.getElementById("custom-text");
+
+      customBtn.addEventListener("click", function() {
+        realFileBtn.click();
+      });
+
+      realFileBtn.addEventListener("change", function() {
+        if (realFileBtn.value) {
+          customTxt.innerHTML = realFileBtn.value.match(/[\/\\]([\w\d\s\.\-\(\)]+)$/)[1];
+        } else {
+          customTxt.innerHTML = "no file chosen";
+        }
+
+      });
+
+      function changeHandler({
+  target
+}) {
+  // Make sure we have files to use
+  if (!target.files.length) return;
+
+  // Create a blob that we can use as an src for our audio element
+  const urlObj = URL.createObjectURL(target.files[0]);
+
+  // Create an audio element
+  const audio = document.createElement("audio");
+
+  // Clean up the URL Object after we are done with it
+  audio.addEventListener("load", () => {
+    URL.revokeObjectURL(urlObj);
+  });
+
+  // Append the audio element
+  document.body.appendChild(audio);
+
+  // Allow us to control the audio
+  audio.controls = "true";
+
+  // Set the src and start loading the audio from the file
+  audio.src = urlObj;
+}
+
+document
+  .getElementById("real-file")
+  .addEventListener("change", changeHandler);
+    
+    </script>
+
+
+
   </body>
 </html>

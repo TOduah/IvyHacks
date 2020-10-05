@@ -1,4 +1,4 @@
-# IvyHacks 2020 (Hackathon)
+# Video Chat Audio Transcriber
 ## Pip Pipers
 + Tobenna O.
 + Akash T.
